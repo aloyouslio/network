@@ -84,3 +84,4 @@ print(inventory['device'][i]['name']+': saving configuration.......')
 output=net_connect.send_command_expect('write mem')
 print output
 net_connect.disconnect()
+
