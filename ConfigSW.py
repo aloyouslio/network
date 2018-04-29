@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 from netmiko import ConnectHandler
-from getpass import getpass
-from datetime import datetime
 
 inventory={
   'device':[
@@ -26,7 +24,6 @@ inventory={
  ]
 }
 
-
 for i in range(len(inventory['device'])):
   net_connect = ConnectHandler(**(inventory['device'][i]['access']))
   net_connect.enable()
@@ -38,7 +35,6 @@ for i in range(len(inventory['device'])):
     print cmd
     output=net_connect.send_config_set(cmd)
     print output
-
 
   if(inventory['device'][i].has_key('vlans')):
     print(inventory['device'][i]['name']+': processing vlans.......')
@@ -83,7 +79,6 @@ for i in range(len(inventory['device'])):
         print cmd
         output = net_connect.send_config_set(cmd)
         print output
-
 
 print(inventory['device'][i]['name']+': saving configuration.......')
 output=net_connect.send_command_expect('write mem')
