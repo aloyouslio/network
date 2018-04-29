@@ -1,0 +1,84 @@
+#!/usr/bin/env python
+from netmiko import ConnectHandler
+import yaml
+
+
+inv="""
+device:
+- access: {device_type: cisco_ios, ip: 192.168.11.3, password: admin, port: 22, username: admin, secret: admin}
+  ints:
+  - {int: range e0/1, fip: 10.10.10.254 255.255.255.0}
+  name: router3
+  ospf:
+    id: 3.3.3.3
+    route:
+    - {network: 192.168.0.0 0.0.255.255, area: '0'}
+    - {network: 10.10.10.0 0.0.0.255, area: '0'}
+  dhcp:
+    - {name: dhcp02, fip: 10.10.10.0 255.255.255.0, gw: 10.10.10.254}
+  exclude:
+    - {range: 10.10.10.1 10.10.10.100}
+"""
+
+inventory=yaml.load(inv)
+
+for i in range(len(inventory['device'])):
+  net_connect = ConnectHandler(**(inventory['device'][i]['access']))
+  net_connect.enable()
+
+
+  if(inventory['device'][i].has_key('ints')):
+    print(inventory['device'][i]['name']+': processing interfaces.......')
+    for ii in range(len(inventory['device'][i]['ints'])):
+      cmd=[]
+      if(inventory['device'][i]['ints'][ii].has_key('int')):
+        cmd.append('interface '+inventory['device'][i]['ints'][ii]['int'])
+      if(inventory['device'][i]['ints'][ii].has_key('fip')):
+        cmd.append('ip address '+inventory['device'][i]['ints'][ii]['fip'])
+      cmd.append('no shutdown')
+      print cmd
+      output = net_connect.send_config_set(cmd)
+      print output
+
+  if(inventory['device'][i].has_key('ospf')):
+    print(inventory['device'][i]['name']+': processing opsf.......')
+    cmd=[]
+    cmd.append('router ospf 1')
+    if(inventory['device'][i]['ospf'].has_key('id')):
+      cmd.append('router-id '+inventory['device'][i]['ospf']['id'])
+    if(inventory['device'][i]['ospf'].has_key('route')):
+      for ii in range(len(inventory['device'][i]['ospf']['route'])):
+        cmd.append('network '+inventory['device'][i]['ospf']['route'][ii]['network']+ ' area ' +
+               inventory['device'][i]['ospf']['route'][ii]['area'])
+        print cmd
+        output=net_connect.send_config_set(cmd)
+        print output
+
+  if(inventory['device'][i].has_key('dhcp')):
+    print(inventory['device'][i]['name']+': processing dhcp.......')
+    for ii in range(len(inventory['device'][i]['dhcp'])):
+      cmd=[]
+      if(inventory['device'][i]['dhcp'][ii].has_key('name')):
+        cmd.append('ip dhcp pool '+inventory['device'][i]['dhcp'][ii]['name'])
+      if(inventory['device'][i]['dhcp'][ii].has_key('fip')):
+        cmd.append('network '+inventory['device'][i]['dhcp'][ii]['fip'])
+      if(inventory['device'][i]['dhcp'][ii].has_key('gw')):
+        cmd.append('default-router '+inventory['device'][i]['dhcp'][ii]['gw'])
+      print cmd
+      output = net_connect.send_config_set(cmd)
+      print output
+
+  if(inventory['device'][i].has_key('exclude')):
+    print(inventory['device'][i]['name']+': processing dhcp exclude.......')
+    for ii in range(len(inventory['device'][i]['exclude'])):
+      cmd=[]
+      if(inventory['device'][i]['exclude'][ii].has_key('range')):
+        cmd.append('ip dhcp excluded-address '+inventory['device'][i]['exclude'][ii]['range'])
+      print cmd
+      output = net_connect.send_config_set(cmd)
+      print output
+
+print(inventory['device'][i]['name']+': saving configuration.......')
+output=net_connect.send_command_expect('write mem')
+print output
+net_connect.disconnect()
